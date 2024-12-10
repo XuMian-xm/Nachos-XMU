@@ -1,71 +1,170 @@
-//基本优先级调度测试
-void TestPrioritySchedulerBasic() {
-    DEBUG('t', "Entering TestPrioritySchedulerBasic");
+// mytest.cc
+// Test the priority scheduler for the threads assginment
+#include "system.h"
+#include "BoundedBuffer.h"
 
-    // 创建具有不同优先级的线程
-    Thread *t1 = new Thread("thread 1", 10);
-    Thread *t2 = new Thread("thread 2", 20);
-    Thread *t3 = new Thread("thread 3", 15);
+#define BOUNDEDBUFFERSIZE 10
 
-    t1->Fork(SimpleThread, 1);
-    t2->Fork(SimpleThread, 2);
-    t3->Fork(SimpleThread, 3);
+extern BoundedBuffer* boundedbuffer;
+extern int p_size;
+extern int c_size;
 
-    // 验证高优先级的线程是否优先被调度
-    SimpleThread(0);
-}
-//大量线程测试
-void TestLargeNumberOfThreads() {
-    DEBUG('t', "Entering TestLargeNumberOfThreads");
+void Buffer_producer(int size) {
+    for (int i = 0; i < 10; ++i)
+    {
+        //int size = Random() % 20 + 1;
+        ////int key=i;
+        char *items = new char[size + 1];
+        for (int i = 0; i < size; ++i)
+        {
+        	items[i] = 65 + i;
+        }
 
-    const int NUM_THREADS = 100;
-    Thread *threads[NUM_THREADS];
+        items[size] = '\0';
+        boundedbuffer->Write(items, size);
+        printf("%s in:%s\n size:%d usedsize:%d\n", currentThread->getName(), items, size, boundedbuffer->UsedSize);
+        currentThread->Yield();
 
-    for (int i = 0; i < NUM_THREADS; ++i) {
-        int priority = Random() % 100;
-        threads[i] = new Thread(std::string("thread ") + std::to_string(i), priority);
-        threads[i]->Fork(SimpleThread, i);
+        //currentThread->Yield();
     }
-
-    // 验证调度器在高负载情况下的性能和稳定性
-    SimpleThread(0);
 }
-//边界条件测试
-void TestEdgeConditions() {
-    DEBUG('t', "Entering TestBoundaryConditions");
-
-    // 所有线程优先级相同
-    Thread *t1 = new Thread("thread 1", 10);
-    Thread *t2 = new Thread("thread 2", 10);
-
-    t1->Fork(SimpleThread, 1);
-    t2->Fork(SimpleThread, 2);
-
-    // 验证调度器在所有线程优先级相同的情况下的行为
-    SimpleThread(0);
-
-    // 只有一个线程
-    Thread *t3 = new Thread("thread 3", 20);
-    t3->Fork(SimpleThread, 3);
-
-    // 验证调度器在只有一个线程的情况下的行为
-    SimpleThread(0);
+void Buffer_consumer(int size) {
+    for (int i = 0; i < 10; ++i)
+    {
+        //int size = 10;
+        char* item = new char[size + 1];
+        boundedbuffer->Read(item, size);
+        item[size] = '\0';
+        printf("%s out:%s\n size:%d usedsize:%d\n", currentThread->getName(), (char*)item, size, boundedbuffer->UsedSize);
+        currentThread->Yield();
+    }
 }
-void ThreadTest0(){
-    int c=1;
+void test1() {
+    DEBUG('t', "Entering ThreadTest0 ");
+    boundedbuffer = new BoundedBuffer(BOUNDEDBUFFERSIZE);
+    for (int var = 0; var < 5; var++)
+    {
+        char No[4] = "1";
+        sprintf(No, "%d", var);
+        //char name[18]="forked thread ";	//error
+        char* name = new char[25];			//蹇呴』鍒嗛厤鏂扮┖闂达紝鍚﹀垯鏂拌繘绋嬩細瑕嗙洊鎺夊師鏈塶ame鍦板潃
+        name[0] = '\0';
+        strcat(name, "consumer thread ");
+        strcat(name, No);
+
+        Thread* t = new Thread(name, 5 - var);
+        t->Fork(Buffer_consumer, c_size);
+    }
+    for (int var = 0; var < 2; var++)
+    {
+        char No[4] = "1";
+        sprintf(No, "%d", var);
+        //char name[18]="forked thread ";	//error
+        char* name = new char[25];			//蹇呴』鍒嗛厤鏂扮┖闂达紝鍚﹀垯鏂拌繘绋嬩細瑕嗙洊鎺夊師鏈塶ame鍦板潃
+        name[0] = '\0';
+        strcat(name, "producer thread ");
+        strcat(name, No);
+        if (var == 0)
+        {
+            Thread* t = new Thread(name, 0);
+            t->Fork(Buffer_producer, p_size);
+        }
+        else if (var == 1)
+        {
+            Thread* t = new Thread(name, 0);
+            t->Fork(Buffer_producer, p_size);
+        }
+
+    }
+}
+void test2() {
+    DEBUG('t', "Entering ThreadTest0 ");
+    boundedbuffer = new BoundedBuffer(BOUNDEDBUFFERSIZE);
+    for (int var = 0; var < 2; var++)
+    {
+        char No[4] = "1";
+        sprintf(No, "%d", var);
+        //char name[18]="forked thread ";	//error
+        char* name = new char[25];			//蹇呴』鍒嗛厤鏂扮┖闂达紝鍚﹀垯鏂拌繘绋嬩細瑕嗙洊鎺夊師鏈塶ame鍦板潃
+        name[0] = '\0';
+        strcat(name, "producer thread ");
+        strcat(name, No);
+        if (var == 0)
+        {
+            Thread* t = new Thread(name, 1);
+            t->Fork(Buffer_producer, p_size);
+        }
+        else if (var == 1)
+        {
+            Thread* t = new Thread(name, 0);
+            t->Fork(Buffer_producer, p_size);
+        }
+    }
+    for (int var = 0; var < 1; var++)
+    {
+        char No[4] = "1";
+        sprintf(No, "%d", var);
+        //char name[18]="forked thread ";	//error
+        char* name = new char[25];			//蹇呴』鍒嗛厤鏂扮┖闂达紝鍚﹀垯鏂拌繘绋嬩細瑕嗙洊鎺夊師鏈塶ame鍦板潃
+        name[0] = '\0';
+        strcat(name, "consumer thread ");
+        strcat(name, No);
+
+        Thread* t = new Thread(name, 1);
+        t->Fork(Buffer_consumer, c_size);
+    }
+}
+void test3() {
+    DEBUG('t', "Entering ThreadTest0 ");
+    boundedbuffer = new BoundedBuffer(BOUNDEDBUFFERSIZE);
+    for (int var = 0; var < 2; var++)
+    {
+        char No[4] = "1";
+        sprintf(No, "%d", var);
+        //char name[18]="forked thread ";	//error
+        char* name = new char[25];			//蹇呴』鍒嗛厤鏂扮┖闂达紝鍚﹀垯鏂拌繘绋嬩細瑕嗙洊鎺夊師鏈塶ame鍦板潃
+        name[0] = '\0';
+        strcat(name, "producer thread ");
+        strcat(name, No);
+        if (var == 0)
+        {
+            Thread* t = new Thread(name, 1);
+            t->Fork(Buffer_producer, p_size);
+        }
+        else if (var == 1)
+        {
+            Thread* t = new Thread(name, 1);
+            t->Fork(Buffer_producer, p_size);
+        }
+    }
+    for (int var = 0; var < 1; var++)
+    {
+        char No[4] = "1";
+        sprintf(No, "%d", var);
+        //char name[18]="forked thread ";	//error
+        char* name = new char[25];			//蹇呴』鍒嗛厤鏂扮┖闂达紝鍚﹀垯鏂拌繘绋嬩細瑕嗙洊鎺夊師鏈塶ame鍦板潃
+        name[0] = '\0';
+        strcat(name, "consumer thread ");
+        strcat(name, No);
+
+        Thread* t = new Thread(name, 0);
+        t->Fork(Buffer_consumer, c_size);
+    }
+}
+void ThreadTest0(int c=1){
     switch(c)
     {
         case 1:
-            TestPrioritySchedulerBasic();
+            test1();
             break;
         case 2:
-            TestLargeNumberOfThreads();
+            test2();
             break;
         case 3:
-            TestEdgeConditions();
+            test3();
             break;
         default:
-            printf("No test specified\n");
+            printf("No test specified.\n");
             break;
     }
 }
